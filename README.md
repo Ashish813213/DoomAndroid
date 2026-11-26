@@ -1,74 +1,88 @@
-# DOOM.QR — Android Build
+# DOOM.QR — Android Edition
 
-A tiny Doom-style raycaster that originally shipped inside a single URL hash, rebuilt as a simple Android WebView app with extra weapons, flying enemies, endless waves, music upload, save states and a hold-to-fast-forward button.
+A tiny Doom-style raycaster that originally shipped inside a single URL hash, rebuilt as a straightforward Android WebView app and expanded into a full run-based shooter.
 
 ![DOOM.QR gameplay](screenshot.png)
 
 ## Install
 
-1. Copy `DOOMQR.apk` to your Android phone (Android 5.0 / API 21 or newer).
+1. Copy `DOOMQR.apk` to your Android phone (Android 5.0 / API 21+).
 2. Allow **Install unknown apps** for the file manager or browser you used.
-3. Open the APK and install. The app is debug-signed, which is fine for personal use.
+3. Open the APK and install. It is debug-signed, which is fine for personal use.
 
-The game runs completely offline — no network permission is needed.
+The game is fully offline and needs no internet permission.
+
+## Screens
+
+- **Title screen** — New Game, Continue, Daily Challenge, How To Play, plus best score/wave, achievement count and daily status.
+- **Pause screen** (`II` button, `P` or `Esc`) — Resume, Save, Load, Restart, Title, music volume slider and touch-sensitivity slider.
+- **Game over / escape screen** — shows kills, score, wave and time with replay options.
 
 ## How to play
 
 Hold the phone in **landscape**.
 
-### Touch controls
-
 | Action | Control |
 | --- | --- |
-| Turn | Drag left or right on the **left half** of the screen |
-| Move forward / back | Drag up or down on the **left half** |
+| Turn | Drag left/right on the **left half** of the screen |
+| Move forward/back | Drag up/down on the **left half** |
 | Fire | Tap and hold on the **right half** |
-| Switch weapon | Tap **P / S / C / R** at the top, or keys `1`–`4` |
+| Switch weapon | **P / S / C / R** buttons at the top, or keys `1`–`4` |
 | Cycle weapon | `Q` key |
-| 3× speed | **Hold** the bottom-right `3x` button; release to return to normal |
-| Choose music | Tap **♫ MUSIC** (bottom-left), pick any audio file |
-| Save progress | Tap **SAVE** (top-right) |
-| Restore progress | Tap **LOAD** (top-right) |
+| Fast forward | **Hold** the bottom-right `3x` button; release to return to normal |
+| Music | `♫ MUSIC` button (bottom-left) |
+| Save / Load | `SAVE` / `LOAD` buttons (top-right) |
+| Pause | `II` button or `P` / `Esc` |
 | Restart after death/win | Tap the screen |
 
-### Keyboard controls
-
-| Key | Action |
-| --- | --- |
-| `W` / `↑`, `S` / `↓` | Move forward / back |
-| `A` / `←`, `D` / `→` | Turn |
-| `Space` | Fire |
-| `1`–`4` | Pistol / Shotgun / Chaingun / Missile |
-| `Q` | Cycle weapon |
+Keyboard: `W`/`↑` and `S`/`↓` move, `A`/`←` and `D`/`→` turn, `Space` fires.
 
 ## Weapons
 
 | Button | Weapon | Handling |
 | --- | --- | --- |
-| **P** | Pistol | Fast, accurate, infinite ammo — your reliable fallback |
-| **S** | Shotgun | 7 pellets, wide spread, slow cycle — good against ground crowds |
+| **P** | Pistol | Fast, accurate, unlimited ammo — reliable fallback |
+| **S** | Shotgun | 7 pellets, wide spread, slow cycle — great vs ground crowds |
 | **C** | Chaingun | Very fast, but spread grows the longer you hold it |
-| **R** | Missile | Slow, costs 3 ammo, explodes with splash damage and gently homes on flying drones |
+| **R** | Missile | Slow, costs 3 ammo, explodes with splash and gently homes on flyers |
 
-## Enemies and waves
+Cyan **upgrade pickups** permanently level up the weapon you are holding (max level 5): more damage, faster cycle, extra shotgun pellets and larger missile splash.
 
-- **Ground imps** chase you and throw fireballs. Tougher high-HP versions appear in later waves.
-- **Flying drones** hover above the floor, close in and fire at you — the missile is the best air weapon.
-- Each time you clear a wave, the next one brings more enemies.
-- **The map grows with you**: every few waves a new sector and a connecting corridor are carved into previously unused space, exposing more routes so the game never feels boxed in. After all sectors are open, they keep expanding.
-- Ammo crates and health kits spawn between waves.
+## Enemies
 
-## Score and combos
+- **Imp** — the original ground chaser, throws fireballs.
+- **Flyer** — hovering drone, closes in and fires; missile is the best answer.
+- **Swarmer** — small, very fast, attacks in numbers.
+- **Brute** — heavily armoured; resists shotgun but takes double damage from missiles.
+- **Sniper** — slow, long-range accurate fireballs.
+- **Boss** — spawns every 5th wave, 600 HP, red health bar at the top; missiles and chaingun deal 1.5× damage.
 
-Every kill adds to your score. Kills in quick succession build a combo multiplier up to **×9**; it resets if you go too long without a kill. The end screen shows kills, score, wave and time.
+## Waves and the growing map
+
+Clear a wave and the next one brings more and tougher enemies. Crucially, **the map grows with you**: each wave carves a new sector into previously unused space and links it to the existing maze with a corridor; after all sectors are open they keep expanding. This keeps new routes appearing so later waves never feel boxed in.
+
+A small **minimap** in the top-left shows open cells, the exit, the player and enemies.
+
+## Score, combos and progression
+
+- Kills build a combo multiplier up to **×9**; it resets if you go too long without a kill.
+- Damage numbers and a hit marker give immediate feedback, with sound effects and vibration.
+- **High scores** (top 5), best score and best wave are saved locally.
+- **Achievements** such as x5 combo and reaching wave 5.
+- **Daily Challenge** — a fixed-seed run, once per day.
+- **Unlockables** — reach wave 5 to start with extra ammo, wave 10 to start with an upgraded missile.
 
 ## Music
 
-The **MUSIC** button opens the Android file picker. The chosen song is copied into the app's private storage and loops continuously for the whole session — it keeps playing through death, restarts and wave changes. Picking another song replaces the current one.
+`♫ MUSIC` opens the Android file picker. The song is **streamed** directly from the picked file (no slow copy) and loops continuously through the whole session, including death and restarts. The pause screen has a **volume slider**; audio focus is handled so music pauses for calls and resumes afterwards. The status line shows the current track name.
 
 ## Save states
 
-**SAVE** stores position, health, ammo, weapon, score, combo, wave and every enemy/thing in the Android app's private preferences. **LOAD** restores them, including re-opening all map sectors unlocked at that wave.
+`SAVE` stores position, health, ammo, weapon, upgrade levels, score, combo, wave, daily state and every enemy/thing in Android private preferences. `LOAD` restores all of it and reopens every map sector unlocked at that wave. High scores and achievements are stored separately so they survive a restart.
+
+## Performance and UX
+
+The 3x button runs game logic three times per frame while skipping redundant canvas uploads, so fast-forward stays smooth on low-end phones. Touch sensitivity is adjustable. Sound effects use the Web Audio API; haptics use the Android vibrator.
 
 ## Project layout
 
@@ -79,12 +93,12 @@ The **MUSIC** button opens the Android file picker. The chosen song is copied in
 └── DoomQR-Android/
     ├── AndroidManifest.xml
     ├── assets/
-    │   ├── index.html    on-screen UI, 3x hold logic, music/bridge hooks
-    │   └── game.js       game logic (weapons, enemies, waves, map growth, saves)
+    │   ├── index.html    UI, overlays, 3x logic, music controls
+    │   └── game.js       game logic (weapons, enemies, waves, map, saves)
     ├── res/values/strings.xml
     ├── src/com/ashish/doomqr/MainActivity.java
-    ├── AddDex.java       small helper used by the build script
-    └── build.ps1         manual APK build script (needs Android SDK build-tools 34)
+    ├── AddDex.java       helper used by the build script
+    └── build.ps1         manual APK build script
 ```
 
 ### Rebuilding
@@ -95,8 +109,8 @@ Install Android SDK platform 34 and build-tools 34.0.0, then run:
 .\DoomQR-Android\build.ps1
 ```
 
-The freshly signed APK is written to `DoomQR-Android\DOOMQR.apk`.
+The signed APK is written to `DoomQR-Android\DOOMQR.apk`.
 
 ## Credits
 
-Original DOOM.QR game logic and art by Siddhant Dubey ([doomqr](https://github.com/siddhantdubey/doomqr), GPL-2.0). This build adds the Android wrapper and gameplay extensions.
+Original DOOM.QR game logic and art by Siddhant Dubey ([doomqr](https://github.com/siddhantdubey/doomqr), GPL-2.0). This build adds the Android wrapper and all gameplay extensions.
