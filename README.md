@@ -1,36 +1,26 @@
-# DOOM.QR — Android Edition
+# STACK TAP — Android Edition
 
-A portrait, top-down tower-defence game rebuilt to match the supplied reference screenshot. It keeps the full extended feature set: four placeable weapons, upgrades, five enemy types plus a boss, growing map, score/combo, saves, music and more.
+A simple, addictive one-tap leisure game. Tap to drop the moving block onto the tower; land it cleanly, build a combo, and see how high you can stack.
 
-![Gameplay](screenshot.png)
+![Gameplay](Screenshots/final.png)
 
 ## Install
-Copy `DOOMQR.apk` to an Android 5.0+ phone, allow **Install unknown apps**, and install. Runs completely offline. Portrait only.
+Copy `DOOMQR.apk` to an Android 5.0+ phone, allow **Install unknown apps**, and install. Portrait only, fully offline.
 
 ## How to play
-- **Place a tower:** tap one of the four cards at the bottom, then tap free grass. Towers cannot go on the road, trees or another tower.
-- **Start a wave:** tap the orange arrow card (or press `Space`). Enemies follow the beige road toward your red base at the bottom.
-- **Upgrade:** tap a placed tower to upgrade it (cost 15 + 15 per level, max level 5).
-- **Lives:** heart counter at top-left. Enemies reaching the base cost 1 life, bosses cost 5.
-- **Coins:** yellow counter. Earned from kills and wave bonuses; spent on towers/upgrades.
-- **Kills:** third counter at top.
-- `1`–`4` select a tower, `Space` start wave, `P`/`Esc` pause.
+- Tap anywhere on the play area to drop the moving block.
+- Overlapping the block below grows your tower; a perfect drop gives bonus coins and a combo.
+- A miss ends the run unless you have a shield.
+- Speed increases as you stack higher.
+- `Space` drops, `1`–`4` select boosters, `P`/`Esc` pauses.
 
-## Towers ("weapons")
-| Card | Cost | Role |
-| --- | --- | --- |
-| FIRE | 25 | Ground, splash damage |
-| ROCK | 45 | Heavy ground damage, slow fire rate |
-| ICE | 35 | Air + slows enemies |
-| MISSILE | 55 | Air/ground homing splash |
+## Boosters
+Spend coins on four boosters at the bottom: **SLOW** (20) halves block speed for 5 drops, **WIDE** (30) widens the block, **x2** (15) doubles score for 5 drops, **SHIELD** (25) saves you from one miss.
 
-## Enemies and waves
-Imp, flyer, swarmer, armoured brute and sniper, with a boss every 5th wave. Each wave grows larger and tougher. Every 3 waves the fog lifts to expose more of the map. Combos multiply your score up to ×9.
-
-## Features carried over
-Title/pause screens, music file picker with looping playback and volume, save/load, high scores, achievements, daily challenge, unlockables (bonus coins at wave 5, upgraded missile at wave 10), haptics, sound effects, minimap, and hold-to-3x fast forward (skips redundant draws).
+## Features
+Title and pause screens, save/load, high scores, achievements, daily challenge, unlockables, music picker with looping playback and volume, haptics, sound effects, and hold-to-`3x` fast forward.
 
 ## Build
 Android SDK platform 34 + build-tools 34.0.0, then `.\DoomQR-Android\build.ps1`.
 
-Credits: original DOOM.QR by Siddhant Dubey (GPL-2.0); Android rebuild with gameplay extensions.
+Credits: Android app and game by Ashish; original URL-game experiments by Siddhant Dubey.

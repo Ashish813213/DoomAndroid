@@ -50,7 +50,7 @@ CanvasRenderingContext2D.prototype.putImageData=function(){if(window.__skipRende
 </script>
 <script src="game.js"></script>
 <script>
-function block(e){e.stopPropagation()}
+function stopEv(e){e.stopPropagation()}
 function bind(el){['touchstart','touchend','mousedown','mouseup','contextmenu'].forEach(function(t){
   el.addEventListener(t,function(e){e.stopPropagation();if(t==='contextmenu')e.preventDefault()},{passive:false})
 })}
@@ -60,11 +60,11 @@ var statusEl=document.createElement('div');statusEl.id='status';statusEl.textCon
 window.__saveMsg=function(t){statusEl.textContent=t;setTimeout(function(){statusEl.textContent=window.__musicName||'No song selected'},1800)};
 
 var musicBtn=mk('btn','\u266A MUSIC');musicBtn.id='music';
-musicBtn.addEventListener('click',function(e){block(e);Android.pickMusic()});document.body.appendChild(musicBtn);
+musicBtn.addEventListener('click',function(e){stopEv(e);Android.pickMusic()});document.body.appendChild(musicBtn);
 
 var fastBtn=mk('btn','3x');fastBtn.id='fast';
-function fastOn(e){block(e);window.__speed=3;fastBtn.style.background='rgba(0,150,0,.85)'}
-function fastOff(e){block(e);window.__speed=1;fastBtn.style.background='rgba(0,0,0,.6)'}
+function fastOn(e){stopEv(e);window.__speed=3;fastBtn.style.background='rgba(0,150,0,.85)'}
+function fastOff(e){stopEv(e);window.__speed=1;fastBtn.style.background='rgba(0,0,0,.6)'}
 ['pointerdown','touchstart','mousedown'].forEach(function(t){fastBtn.addEventListener(t,fastOn,{passive:false})});
 ['pointerup','pointercancel','pointerleave','touchend','touchcancel','mouseup'].forEach(function(t){fastBtn.addEventListener(t,fastOff,{passive:false})});
 document.body.appendChild(fastBtn);
@@ -73,25 +73,25 @@ function refreshWeapons(){}
 
 var savebar=document.createElement('div');savebar.id='savebar';
 [['SAVE',function(){window.saveGame()}],['LOAD',function(){window.loadGame();refreshWeapons()}],['II',function(){window.setPaused(true)}]].forEach(function(p){
- var b=mk('btn',p[0]);if(p[0]==='II')b.id='pausebtn';b.addEventListener('click',function(e){block(e);p[1]()});savebar.appendChild(b)
+ var b=mk('btn',p[0]);if(p[0]==='II')b.id='pausebtn';b.addEventListener('click',function(e){stopEv(e);p[1]()});savebar.appendChild(b)
 });
 document.body.appendChild(savebar);
 
 // ---------- overlays ----------
 function makeOverlay(id){var d=document.createElement('div');d.className='overlay hidden';d.id=id;document.body.appendChild(d);return d}
-var title=makeOverlay('title'),how=makeOverlay('how'),pauseOverlay=makeOverlay('pause'),over=makeOverlay('over');
+var title=makeOverlay('title'),how=makeOverlay('how'),pauseOverlay=makeOverlay('pause'),overOverlay=makeOverlay('over');
 var titleInfo=document.createElement('div');titleInfo.className='small';title.appendChild(titleInfo);
 var h1=document.createElement('h1');h1.textContent='DOOM.QR';title.insertBefore(h1,titleInfo);
-var h2=document.createElement('h2');h2.textContent='TOWER DEFENCE';title.insertBefore(h2,titleInfo);
+var h2=document.createElement('h2');h2.textContent='STACK TAP';title.insertBefore(h2,titleInfo);
 
-function button(parent,label,fn){var b=mk('btn',label);b.addEventListener('click',function(e){block(e);fn()});parent.appendChild(b);return b}
+function button(parent,label,fn){var b=mk('btn',label);b.addEventListener('click',function(e){stopEv(e);fn()});parent.appendChild(b);return b}
 var btnNew=button(title,'NEW GAME',function(){hideAll();window.startGame();refreshWeapons()});
 var btnCont=button(title,'CONTINUE',function(){hideAll();window.loadGame();refreshWeapons()});
 var btnDaily=button(title,'DAILY CHALLENGE',function(){hideAll();window.startDaily();refreshWeapons()});
 button(title,'HOW TO PLAY',function(){hideAll();how.classList.remove('hidden')});
 
 var howText=document.createElement('div');howText.className='small';
-howText.innerHTML='<b>Place towers:</b> tap a card, then tap grass. Tap a placed tower to upgrade it.<br><b>Start wave:</b> tap the orange arrow (or Space). Enemies follow the road toward your base.<br><b>Towers:</b> FIRE 25 (ground), ROCK 45 (ground), ICE 35 (air + slow), MISSILE 55 (air + splash).<br><b>Keys:</b> 1-4 select tower, Space start wave, P pause.<br><b>3x:</b> hold the 3x button. <b>MUSIC:</b> pick a looping song. <b>SAVE/LOAD:</b> store your run.';how.appendChild(howText);
+howText.innerHTML='<b>Tap anywhere</b> to drop the moving block onto the stack. Land it cleanly to grow your tower; perfect timing builds combo and extra coins.<br><b>Boosters:</b> SLOW, WIDE, x2 and SHIELD at the bottom - spend coins on them.<br><b>Keys:</b> Space to drop, 1-4 for boosters, P pause.<br><b>3x:</b> hold to speed things up. <b>MUSIC:</b> pick a looping song. <b>SAVE/LOAD:</b> store your run.';how.appendChild(howText);
 button(how,'BACK',function(){hideAll()});
 
 var pauseTitle=document.createElement('h2');pauseTitle.textContent='PAUSED';pauseOverlay.appendChild(pauseTitle);
@@ -109,22 +109,22 @@ button(pauseOverlay,'LOAD',function(){window.loadGame();hideAll()});
 button(pauseOverlay,'RESTART',function(){hideAll();window.startGame()});
 button(pauseOverlay,'TITLE',function(){hideAll();window.setPaused(false);window.startGame();title.classList.remove('hidden')});
 
-var overTitle=document.createElement('h2');over.appendChild(overTitle);
-var overInfo=document.createElement('div');overInfo.className='small';over.appendChild(overInfo);
-button(over,'NEW GAME',function(){hideAll();window.startGame();refreshWeapons()});
-button(over,'LOAD',function(){hideAll();window.loadGame();refreshWeapons()});
-button(over,'TITLE',function(){hideAll();title.classList.remove('hidden')});
+var overTitle=document.createElement('h2');overOverlay.appendChild(overTitle);
+var overInfo=document.createElement('div');overInfo.className='small';overOverlay.appendChild(overInfo);
+button(overOverlay,'NEW GAME',function(){hideAll();window.startGame();refreshWeapons()});
+button(overOverlay,'LOAD',function(){hideAll();window.loadGame();refreshWeapons()});
+button(overOverlay,'TITLE',function(){hideAll();title.classList.remove('hidden')});
 
-function hideAll(){[title,how,pauseOverlay,over].forEach(function(d){d.classList.add('hidden')})}
+function hideAll(){[title,how,pauseOverlay,overOverlay].forEach(function(d){d.classList.add('hidden')})}
 function updateUI(){
  var s=window.getGameState?window.getGameState():{mode:'title',paused:false};
  if(s.mode==='title'&&how.classList.contains('hidden')){if(title.classList.contains('hidden')){hideAll();title.classList.remove('hidden')}}
  else if(how.classList.contains('hidden')&&title.classList.contains('hidden')){
-  if(s.paused){pauseOverlay.classList.remove('hidden');over.classList.add('hidden')}
+  if(s.paused){pauseOverlay.classList.remove('hidden');overOverlay.classList.add('hidden')}
   else{pauseOverlay.classList.add('hidden')}
-  if(s.mode==='dead'||s.mode==='won'){over.classList.remove('hidden');overTitle.textContent=s.mode==='won'?'ESCAPED!':'YOU DIED';
+  if(s.mode==='dead'||s.mode==='won'){overOverlay.classList.remove('hidden');overTitle.textContent=s.mode==='won'?'ESCAPED!':'YOU DIED';
     overInfo.textContent='Wave '+s.wave+'   Score '+s.score+'   Best '+(window.getMeta?window.getMeta().bestScore:0)}
-  else over.classList.add('hidden');
+  else overOverlay.classList.add('hidden');
  }
  var m=window.getMeta?window.getMeta():{};
  titleInfo.textContent='Best score: '+(m.bestScore||0)+'   Best wave: '+(m.bestWave||0)+'   Achievements: '+Object.keys(m.ach||{}).length+
