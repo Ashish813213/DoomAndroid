@@ -29,6 +29,11 @@
   .overlay .small{font-size:12px;color:#aaa;max-width:560px;line-height:1.5}
   .overlay input{width:240px}
   .row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+  /* Portrait: keep the 320:200 game aspect and centre it vertically */
+  @media (orientation:portrait){
+    #V{width:100vw !important;height:62.5vw !important}
+    #status{max-width:60%}
+  }
 </style>
 </head>
 <body>
@@ -50,8 +55,10 @@ CanvasRenderingContext2D.prototype.putImageData=function(){if(window.__skipRende
 </script>
 <script src="game.js"></script>
 <script>
-function block(e){e.preventDefault();e.stopPropagation()}
-function bind(el){['touchstart','touchend','mousedown','mouseup','contextmenu'].forEach(function(t){el.addEventListener(t,block,{passive:false})})}
+function block(e){e.stopPropagation()}
+function bind(el){['touchstart','touchend','mousedown','mouseup','contextmenu'].forEach(function(t){
+  el.addEventListener(t,function(e){e.stopPropagation();if(t==='contextmenu')e.preventDefault()},{passive:false})
+})}
 function mk(cls,text){var b=document.createElement('div');b.className=cls;b.textContent=text;bind(b);return b}
 
 var statusEl=document.createElement('div');statusEl.id='status';statusEl.textContent='No song selected';document.body.appendChild(statusEl);

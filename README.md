@@ -1,6 +1,6 @@
 # DOOM.QR — Android Edition
 
-A tiny Doom-style raycaster that originally shipped inside a single URL hash, rebuilt as a straightforward Android WebView app and expanded into a full run-based shooter.
+A tiny Doom-style raycaster that originally shipped inside a single URL hash, rebuilt as a straightforward Android WebView app and expanded into a full run-based shooter. Portrait-only, with a pixel-art monster launcher icon.
 
 ![DOOM.QR gameplay](screenshot.png)
 
@@ -20,7 +20,7 @@ The game is fully offline and needs no internet permission.
 
 ## How to play
 
-Hold the phone in **landscape**.
+The app runs in **portrait**. The 320×200 game view is scaled to the screen width and kept centred vertically; the controls still split the screen into left (move/turn) and right (fire) halves.
 
 | Action | Control |
 | --- | --- |
