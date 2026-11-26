@@ -10,11 +10,6 @@
     -webkit-user-select:none;touch-action:none}
   #music{left:8px;bottom:8px}#fast{right:8px;bottom:8px;font-size:20px;min-width:56px;text-align:center}
   #pausebtn{position:static;padding:5px 9px;font-size:12px}
-  #weapons{position:fixed;z-index:99999;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
-  .wbtn{width:34px;height:28px;padding:0;border:2px solid #fff;border-radius:6px;background:rgba(0,0,0,.6);
-    color:#fff;font:bold 14px sans-serif;text-align:center;line-height:24px;user-select:none;
-    -webkit-user-select:none;touch-action:none}
-  .wbtn.active{background:rgba(0,150,0,.85)}
   #savebar{position:fixed;z-index:99999;top:8px;right:8px;display:flex;gap:4px}
   #savebar .btn{position:static;padding:5px 9px;font-size:12px}
   #status{position:fixed;z-index:99999;top:8px;left:8px;color:#fff;font:12px sans-serif;
@@ -74,10 +69,7 @@ function fastOff(e){block(e);window.__speed=1;fastBtn.style.background='rgba(0,0
 ['pointerup','pointercancel','pointerleave','touchend','touchcancel','mouseup'].forEach(function(t){fastBtn.addEventListener(t,fastOff,{passive:false})});
 document.body.appendChild(fastBtn);
 
-var weapons=document.createElement('div');weapons.id='weapons';var wbtns=[];
-['P','S','C','R'].forEach(function(label,n){var b=mk('wbtn',label);b.addEventListener('click',function(e){block(e);window.setWeapon(n);refreshWeapons()});weapons.appendChild(b);wbtns.push(b)});
-document.body.appendChild(weapons);
-function refreshWeapons(){var w=window.getGameState?window.getGameState().wp:0;wbtns.forEach(function(b,i){b.className='wbtn'+(i===w?' active':'')})}
+function refreshWeapons(){}
 
 var savebar=document.createElement('div');savebar.id='savebar';
 [['SAVE',function(){window.saveGame()}],['LOAD',function(){window.loadGame();refreshWeapons()}],['II',function(){window.setPaused(true)}]].forEach(function(p){
@@ -90,7 +82,7 @@ function makeOverlay(id){var d=document.createElement('div');d.className='overla
 var title=makeOverlay('title'),how=makeOverlay('how'),pauseOverlay=makeOverlay('pause'),over=makeOverlay('over');
 var titleInfo=document.createElement('div');titleInfo.className='small';title.appendChild(titleInfo);
 var h1=document.createElement('h1');h1.textContent='DOOM.QR';title.insertBefore(h1,titleInfo);
-var h2=document.createElement('h2');h2.textContent='ANDROID EDITION';title.insertBefore(h2,titleInfo);
+var h2=document.createElement('h2');h2.textContent='TOWER DEFENCE';title.insertBefore(h2,titleInfo);
 
 function button(parent,label,fn){var b=mk('btn',label);b.addEventListener('click',function(e){block(e);fn()});parent.appendChild(b);return b}
 var btnNew=button(title,'NEW GAME',function(){hideAll();window.startGame();refreshWeapons()});
@@ -99,14 +91,7 @@ var btnDaily=button(title,'DAILY CHALLENGE',function(){hideAll();window.startDai
 button(title,'HOW TO PLAY',function(){hideAll();how.classList.remove('hidden')});
 
 var howText=document.createElement('div');howText.className='small';
-howText.innerHTML='<b>Touch:</b> drag left half to turn / move, hold right half to fire.<br>'+
- '<b>Keys:</b> WASD / arrows move, Space fire, 1-4 weapons, Q cycle, P pause.<br>'+
- '<b>Weapons:</b> Pistol (infinite), Shotgun (spread), Chaingun (spread grows), Missile (splash + homes on flyers).<br>'+
- '<b>Enemies:</b> imps, flyers, swarmers, brutes, snipers and a boss every 5 waves.<br>'+
- '<b>Map:</b> new areas and corridors open as waves rise.<br>'+
- '<b>3x:</b> hold the 3x button. <b>MUSIC:</b> pick a song to loop it.<br>'+
- '<b>SAVE/LOAD:</b> store and restore your run.';
-how.appendChild(howText);
+howText.innerHTML='<b>Place towers:</b> tap a card, then tap grass. Tap a placed tower to upgrade it.<br><b>Start wave:</b> tap the orange arrow (or Space). Enemies follow the road toward your base.<br><b>Towers:</b> FIRE 25 (ground), ROCK 45 (ground), ICE 35 (air + slow), MISSILE 55 (air + splash).<br><b>Keys:</b> 1-4 select tower, Space start wave, P pause.<br><b>3x:</b> hold the 3x button. <b>MUSIC:</b> pick a looping song. <b>SAVE/LOAD:</b> store your run.';how.appendChild(howText);
 button(how,'BACK',function(){hideAll()});
 
 var pauseTitle=document.createElement('h2');pauseTitle.textContent='PAUSED';pauseOverlay.appendChild(pauseTitle);

@@ -1,337 +1,326 @@
-// DOOM.QR - extended Android build
-// Features: 4 weapons + upgrades, 5 enemy types + boss, growing map, waves,
-// score/combo, high scores, achievements, daily challenge, saves, audio/haptics.
-let F,C,LT,WT,FT,FL,r,y,x,px,py,pa,pz,vx,vy,sa,ca,hp,ammo,kills,xl,mvx,mvy,tf,TS,fire,T,i,red,wt,gs,tt,tic,vh,ez,bob;
-let wp,wsw,ramp,score,combo,comboT,wave,lastWave,shake,mode,paused,hitT,fx,daily,seed,sens,wLvl,meta;
-document.body.innerHTML='<canvas id=V width=320 height=200 style="position:fixed;inset:0;margin:auto;width:min(100vw,133dvh);height:min(75vw,100dvh);image-rendering:pixelated;outline:1e4px solid">';
-const cx=V.getContext('2d'),img=cx.createImageData(320,200),D=img.data.fill(255),zb=new Float32Array(53760),M=Math;
+// DOOM.QR - portrait top-down tower defence, rebuilt from the supplied screenshot.
+// Keeps the extended feature set: 4 placeable "weapons", upgrades, 5 enemy types +
+// boss, growing map, minimap, score/combo, saves, music and all app features.
+let mode,paused,wave,lives,coins,score,kills,combo,comboT,reveal,selected,waveActive;
+let towers,enemies,shots,particles,trees,path,pathLen,t,tic,shake,hitT,fx,daily,seed,sens,wLvl,meta;
+const W=160,H=260,MX=6,MY=18,MW=148,MH=204,BY=224;
+document.body.innerHTML='<canvas id=V width='+W+' height='+H+' style="position:fixed;inset:0;margin:auto;width:min(100vw,61.5dvh);height:auto;image-rendering:pixelated;outline:1e4px solid #1a0f0d">';
+const cv=V,cx=cv.getContext('2d'),img=cx.createImageData(W,H),D=img.data.fill(255),M=Math;
 const R=()=>{if(!seed)return M.random();seed=(M.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
-const P=(i,c,k)=>{D[i*=4]=c[0]*k;D[i+1]=c[1]*k;D[i+2]=c[2]*k};
-const lf=(l,z)=>(32-M.max(0,4*(15-l-xl)-20/z|0))/32;
-// map
-const MS=[...":140;240<240?153?161<348726@727D28880D07:142D08:144D09:146D0:9368D0=;=28@1?=819?1H=215@2=>>:0L3=>>22L4H>292L4=E>22L4KE122>5LA:82H6TD123H70GH0PU0ZN0N]0pV0v^0tT3XH3bT1Q["].map(c=>c.charCodeAt()-48);
-[F,C,LT,WT,FT,FL]=[0,0,0,0,0,0].map(_=>new Float32Array(1040));
-for(r=32;r<137;r+=7)for(y=MS[r+1];y<MS[r+1]+MS[r+3];y++)for(x=MS[r];x<MS[r]+MS[r+2];x++)[F,C,LT,WT,FT,FL].map((a,j)=>a[y*40+x]=j<2?MS[r+4+j]/8:MS[MS[r+6]*4+j-2]);
-const cell=(x,y)=>40*(y|0)+(x|0);
-const BASE=[F,C,LT,WT,FT,FL].map(a=>a.slice());
-const OPEN=new Uint8Array(1040);
-for(let k=0;k<1040;k++)OPEN[k]=WT[k]||FT[k]||FL[k]||LT[k]||C[k]?1:0;
-const BASEOPEN=OPEN.slice();
-const openCell=(x,y)=>{if(x<1||x>38||y<1||y>24)return;const k=cell(x,y);F[k]=0;C[k]=20;LT[k]=5;WT[k]=1;FT[k]=4;FL[k]=0;OPEN[k]=1};
-const carve=(x,y,w,h)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++)openCell(x+i,y+j)};
-const link=(lx,from,to)=>{for(let y=from;y<=to;y++)openCell(lx,y)};
-const SECTORS=[
- {x:3,y:5,w:9,h:3,l:5},{x:14,y:4,w:10,h:4,l:16},{x:25,y:3,w:12,h:5,l:24},
- {x:1,y:1,w:10,h:4,l:3},{x:13,y:1,w:11,h:4,l:16},{x:26,y:1,w:12,h:4,l:28},
- {x:36,y:10,w:3,h:6,l:36},{x:36,y:3,w:3,h:7,l:36}
+const P=(x,y,c)=>{const i=((y|0)*W+(x|0))*4;if(i<0||i>=D.length)return;D[i]=c[0];D[i+1]=c[1];D[i+2]=c[2]};
+const rect=(x,y,w,h,c)=>{cx.fillStyle=c;cx.fillRect(x|0,y|0,w|0,h|0)};
+const px=(x,y,c)=>P(x,y,c);
+const line=(x0,y0,x1,y1,c,w)=>{cx.strokeStyle=c;cx.lineWidth=w;cx.lineCap='square';cx.beginPath();cx.moveTo(x0,y0);cx.lineTo(x1,y1);cx.stroke()};
+const text=(s,x,y,size,c)=>{cx.fillStyle=c;cx.font='bold '+size+'px monospace';cx.fillText(s,x|0,y|0)};
+// pixel palette matched to the reference screenshot
+const C={bg:'#1a0f0d',grass:'#5a7a4a',speck:'#4a6a3a',path:'#cdbf83',edge:'#8b8060',card:'#3a1f2e',cardOn:'#8a4a1e',gold:'#ffe08a',fire:'#ff7a18',ice:'#4fc3ff',rock:'#9a9390',missile:'#8bd94f'};
+// path (local coordinates inside the map rectangle)
+const RAW=[[80,0],[80,28],[132,28],[132,64],[40,64],[40,108],[112,108],[112,152],[52,152],[52,186],[80,204]];
+const pathAt=u=>{
+ let d=u*pathLen,i=0;
+ while(i<path.length-1){const a=path[i],b=path[i+1],s=M.hypot(b[0]-a[0],b[1]-a[1]);if(d<=s)return[a[0]+(b[0]-a[0])*d/s,a[1]+(b[1]-a[1])*d/s];d-=s;i++}
+ return path[path.length-1];
+};
+const buildPath=()=>{path=RAW.map(p=>[p[0],p[1]]);pathLen=0;for(let i=0;i<path.length-1;i++)pathLen+=M.hypot(path[i+1][0]-path[i][0],path[i+1][1]-path[i][1])};
+buildPath();
+// tower types (the "four weapons"), costs from the screenshot for the first three
+const TW=[
+ {n:'FIRE',cost:25,dmg:9,rate:26,rng:34,col:C.fire,air:1,splash:4,slow:0},
+ {n:'ROCK',cost:45,dmg:20,rate:48,rng:30,col:C.rock,air:0,splash:0,slow:0},
+ {n:'ICE', cost:35,dmg:5, rate:20,rng:32,col:C.ice, air:1,splash:0,slow:.5},
+ {n:'MISS',cost:55,dmg:26,rate:40,rng:42,col:C.missile,air:1,splash:9,slow:0}
 ];
-const expandMap=n=>{
- if(n<SECTORS.length){const s=SECTORS[n];carve(s.x,s.y,s.w,s.h);link(s.l,s.y+s.h-1,s.l==36?17:11)}
- else{const g=Math.min(4,n-SECTORS.length+1);for(const s of SECTORS)carve(s.x-g,s.y-g,s.w+2*g,s.h+2*g)}
-};
-const HU=[,[150,96,56],[118,118,126],[156,128,40],[104,104,96],[50,200,40],[116,96,76],[200,40,40],[210,70,210],[70,190,90],[80,200,200],[120,220,80],[150,150,160],[80,140,230],[230,60,60]];
-const tex=(t,u,v)=>(u&=63,v&=63,t==5?.75+M.sin((u+tic)/6)*M.sin(v/5)/4:t==3&&v<10?.2+(u+v>>3&1):u&31&&v&31?.9:.5);
-// raycaster
-const render=(x,q,rx,ry,tp,bt,ci,ni,d,sd,a,u,t,l,y,fp,wp2)=>{
- fp=(hh,t,z,i,a)=>{zb[i=y*320+x]=z=160*(ez-hh)/(y-83.5);t?P(i,HU[t],.8*lf(l,z)):P(i,[140-y,60-y/3,40+y/4],1)};
- wp2=i=>{zb[i=y*320+x]=d;P(i,HU[t],tex(t,u,64*(ez-(y-83.5)*d/160))*lf(l,d))};
- for(x=0;x<320;x++){
-  q=(x-159.5)/160;rx=ca-sa*q;ry=sa+ca*q;tp=0;bt=168;ci=cell(px,py);
-  for(d=.01;d<40&&tp<bt;d+=d/50+.002)if((ni=cell(px+rx*d,py+ry*d))!=ci){
-   sd=ni%40!=ci%40?1:-1;d=(sd>0?(ni%40+(rx<0)-px)/rx:((ni/40|0)+(ry<0)-py)/ry)||.001;l=LT[ci];
-   for(y=M.max(tp,a=M.ceil(84+160*(ez-F[ci])/d));y<bt;y++)fp(F[ci],FT[ci]);bt=M.min(bt,a);
-   for(y=tp;y<M.min(bt,a=M.ceil(84+160*(ez-C[ci])/d));y++)fp(C[ci],FL[ci]&1?0:4);tp=M.max(tp,a);
-   u=(sd<0?px+rx*d:py+ry*d)*64;t=WT[ni]||WT[ci];l+=sd;
-   for(y=M.max(tp,a=M.ceil(84+160*(ez-F[ni])/d));y<bt;y++)wp2();bt=M.min(bt,a);
-   for(y=tp;y<M.min(bt,a=M.ceil(84+160*(ez-C[ni])/d));y++)wp2();tp=M.max(tp,a);ci=ni;
-  }
- }
-};
-const blit=(x0,y0,s,w,h,f,z,m,X,Y,i,c)=>{
- for(X=M.max(0,x0|0);X<M.min(320,x0+w*s);X++)for(Y=M.max(0,y0|0);Y<M.min(200,y0+h*s);Y++)z>zb[i=Y*320+X]||(c=f((X-x0)/s|0,(Y-y0)/s|0))&&P(i,c,m);
-};
-const bm=(b,w,p,u,v,c)=>(c=+b[v*w+(u<w?u:2*w-1-u)])&&p[c-1];
-const IMP='0010000001200000012100000012222200122222001231220012222200121313001121110112222212222222122122221221222212212222310122223001222200122110001221000012210001111100';
-const IPAL=[[56,24,16],[140,76,44],[255,220,60]];
-const PAL9=[[90,20,20],[190,60,30],[255,200,40]],PAL11=[[30,60,20],[70,160,60],[190,255,80]],PAL12=[[70,70,80],[140,140,150],[230,230,240]],PAL13=[[20,30,90],[50,90,190],[120,200,255]];
-const spr=(o,u,v,c)=>{
- if(o.k==2)return(c=M.hypot(u-7.5,v-9.5)/4)<1&&[255,255-c*200,120*(1-c)**2];
- if(o.k==6)return(c=M.hypot(u-7.5,v-9.5)/5)<1&&[230,230-c*120,60];
- if(o.k==7)return(c=M.hypot(u-7.5,v-9.5)/9)<1&&[255,255-c*100,120-c*120];
- if(o.k==8)return v>3&&v<16&&u>3&&u<12&&(u>5&&u<10&&v>5&&v<14?[240,60,60]:[230,230,230]);
- if(o.k==10)return(c=M.hypot(u-7.5,v-9.5)/6)<1&&[80,240-c*60,240-c*80];
- if(o.k==4)return(v>6&&v<13&&((u>0&&u<6)||(u>9&&u<15))&&[90,90,110])||(c=M.hypot(u-7.5,v-9.5)/5)<1&&[200,80-c*70,240-c*100];
- const pal=o.k==9?PAL9:o.k==11?PAL11:o.k==12?PAL12:o.k==13?PAL13:IPAL;
- return(o.s>3?(v=v*4-60):1,v>=0&&v<20&&(c=bm(IMP,8,pal,u,v))&&c);
-};
-const drawThings=(o,s)=>{
- for(o of T)o.d=(o.x-px)*ca+(o.y-py)*sa;
- T.sort((a,b)=>b.d-a.d);
- for(o of T)o.d>.2&&(s=7.5/o.d*(o.k==9?2.2:o.k==11?.7:1),blit(160+160*((o.y-py)*ca-(o.x-px)*sa)/o.d-8*s,84-160*(o.z-ez)/o.d-20*s,s,16,20,(u,v)=>spr(o,u,v),o.d,o.k<2||o.k>8?lf(LT[cell(o.x,o.y)],o.d):1));
-};
-// audio + haptics
+const ET=[
+ {n:'imp',hp:24,sp:9,rw:6,air:0,col:'#ff8a2a',sz:4},
+ {n:'fly',hp:18,sp:13,rw:8,air:1,col:'#d36bff',sz:4},
+ {n:'swarm',hp:12,sp:20,rw:4,air:0,col:'#b6e34a',sz:3},
+ {n:'brute',hp:90,sp:6,rw:16,air:0,col:'#a0a0a8',sz:6},
+ {n:'sniper',hp:30,sp:11,rw:10,air:0,col:'#5aa0ff',sz:4},
+ {n:'boss',hp:500,sp:5,rw:100,air:0,col:'#ff4040',sz:9}
+];
 let AC=null;
 const sfx=(f,d,type,vol)=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.value=f;g.gain.value=vol||.04;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.stop(AC.currentTime+d)}catch(e){}};
 const vib=ms=>{try{window.Android&&Android.vibrate&&Android.vibrate(ms)}catch(e){}};
-// player
-px=3;py=12;pa=pz=vx=vy=sa=0;ca=1;hp=100;ammo=24;kills=0;xl=0;
-wp=0;wsw=0;ramp=0;score=0;combo=1;comboT=0;wave=1;lastWave=0;shake=0;
-mode='title';paused=false;hitT=0;fx=[];daily=false;seed=0;sens=1;wLvl=[0,0,0,0];
+const ach=(id,label)=>{if(!meta.ach[id]){meta.ach[id]=1;window.__saveMsg&&window.__saveMsg('ACHIEVEMENT: '+label);saveMeta()}};
+const saveMeta=()=>{try{window.Android&&Android.setMeta&&Android.setMeta(JSON.stringify(meta))}catch(e){}};
 try{meta=JSON.parse((window.Android&&Android.getMeta&&Android.getMeta())||'{}')}catch(e){meta={}}
 meta.scores=meta.scores||[];meta.ach=meta.ach||{};meta.bestWave=meta.bestWave||0;meta.bestScore=meta.bestScore||0;
-const K=new Uint8Array(256);
-mvx=mvy=tf=TS=0;
-ontouchstart=ontouchmove=ontouchend=(e,l,t)=>{
- if(mode!=='playing'||paused){tf=mvx=mvy=0;return}
- tf=mvx=mvy=l=0;e.type[5]=='s'&&tap();
- for(t of e.touches)t.pageX*2>innerWidth?tf=1:(l=TS=TS||[t.pageX,t.pageY],mvx=cl((t.pageX-TS[0])/40*sens),mvy=cl((t.pageY-TS[1])/40*sens));
- TS=l;
+const within=(x,y)=>x>=MX&&x<MX+MW&&y>=MY&&y<MY+MH;
+const onPath=(x,y)=>{for(let u=0;u<=1;u+=.004){const p=pathAt(u);if(M.hypot(p[0]+MX-x,p[1]+MY-y)<7)return true}return false};
+const nearTree=(x,y)=>trees.some(o=>M.hypot(o.x-x,o.y-y)<7);
+const nearTower=(x,y)=>towers.some(o=>M.hypot(o.x-x,o.y-y)<10);
+const makeTrees=()=>{trees=[];for(let i=0;i<26;i++){const x=MX+5+R()*(MW-10),y=MY+5+R()*(MH-10);if(!onPath(x,y))trees.push({x:x,y:y})}};
+const reset=()=>{
+ mode='playing';paused=false;wave=1;lives=20;coins=75+(meta.bestWave>=5?20:0);score=0;kills=0;combo=1;comboT=0;
+ reveal=3;selected=0;waveActive=false;towers=[];enemies=[];shots=[];particles=[];fx=[];tic=0;shake=0;hitT=0;
+ daily=false;seed=0;sens=1;wLvl=[0,0,0,0];if(meta.bestWave>=10)wLvl[3]=1;
+ makeTrees();window.__saveMsg&&window.__saveMsg('PLACE TOWERS - TAP ARROW TO START');
 };
-onkeydown=onkeyup=e=>{
- K[e.keyCode]=e.type[3]=='d';K[e.keyCode]&&tap();
- if(e.type[3]=='d'&&e.keyCode>=49&&e.keyCode<=52)setWeapon(e.keyCode-49);
- if(e.type[3]=='d'&&e.keyCode==81)setWeapon((wp+3)%4);
- if(e.type[3]=='d'&&(e.keyCode==80||e.keyCode==27))window.setPaused&&window.setPaused(!paused);
+window.startGame=()=>reset();
+window.startDaily=()=>{
+ const d=new Date().toISOString().slice(0,10);
+ if(meta.daily===d){window.__saveMsg&&window.__saveMsg('DAILY DONE TODAY');return}
+ reset();daily=true;seed=[...d].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)>>>0;
+ window.__saveMsg&&window.__saveMsg('DAILY CHALLENGE');
 };
-const cl=v=>M.max(-1,M.min(1,v));
-const probe=(x,y,z,r,j,k,o)=>{
- for(o=-9,j=4;j--;)k=cell(x+(j&1?r:-r),y+(j&2?r:-r)),o=F[k]-z>.375||C[k]-M.max(F[k],z)<.875?99:M.max(o,F[k]);
- return o;
-};
-const movePlayer=(f,s)=>{
- ca=M.cos(pa+=mvx*.1+.08*(K[39]-K[37]));sa=M.sin(pa);
- f=cl(K[38]-K[40]-mvy+(K[87]-K[83]));s=K[68]-K[65];fire=tf|K[32];
- vx+=.0244*(ca*f-sa*s);vy+=.0244*(sa*f+ca*s);
- probe(px+vx,py,pz,.25)<99?px+=vx:vx=0;probe(px,py+vy,pz,.25)<99?py+=vy:vy=0;
- vx*=.906;vy*=.906;pz=probe(px,py,pz,.25);
-};
-// things
-const spawn=(k,x,y,z,vx=0,vy=0,vz=0,h=80)=>T.push({k,x,y,z,vx,vy,vz,h,s:0,t:0,d:0});
-T=[];
-const los=(x,y,z,X,Y,Z,j,n,k,b)=>{
- for(n=M.hypot(X-x,Y-y)*8+1,j=0;j<n;j++)if((b=z+(Z-z)*j/n)<F[k=cell(x+(X-x)*j/n,y+(Y-y)*j/n)]||b>C[k])return 0;
- return 1;
-};
-const ouch=n=>{n>0&&hp&&(hp=M.max(hp-n,0),red+=n,shake=6,sfx(90,.18,'sawtooth',.06),vib(40))};
-red=0;
-const achieve=(id,label)=>{if(!meta.ach[id]){meta.ach[id]=true;window.__saveMsg&&window.__saveMsg('ACHIEVEMENT: '+label);saveMeta()}};
-const hurt=(o,n)=>{
- if(!(o.k<2||o.k==4||o.k>8)||o.s>=4||n<=0)return;
- if(o.k==12)n*=wp==3?2:wp==1?.4:.8;
- if(o.k==9)n*=wp==3||wp==2?1.5:1;
- if((o.h-=n)>0){o.k||(o.s=o.s||1)}
- else{
-  o.s=4;kills++;combo=M.min(combo+1,9);comboT=110;score+=100*combo;shake=Math.max(shake,3);
-  sfx(760+combo*40,.12,'square',.05);vib(25);
-  if(fx.length<12)fx.push({x:150+R()*20,y:70+R()*20,t:22,txt:'-'+Math.round(n),c:'#ff0'});
-  if(combo>=5)achieve('combo5','x5 COMBO');
- }
-};
-// weapons with upgrade levels
-const BASEW=[
- {n:'PISTOL',t:14,p:1,d:10,s:.015,c:0,a:1},
- {n:'SHOTGN',t:44,p:7,d:6,s:.16,c:1,a:1},
- {n:'CHAIN', t:6, p:1,d:4,s:.05,c:1,a:1,rmp:1},
- {n:'MISSLE',t:38,p:1,d:34,s:0,c:3,a:2,k:1}
-];
-const stat=k=>{
- const w=Object.assign({},BASEW[k]),L=wLvl[k]||0;
- w.d=Math.round(w.d*(1+.22*L));w.t=Math.max(4,w.t*(1-.09*L));
- if(k==1)w.p+=L;if(k==3)w.splash=.95+.25*L;
- return w;
-};
-const hitScan=(ang,dmg,tol,w)=>{
- for(o of T)if(o.k<2||o.k==4||o.k>8){
-  const dx=o.x-px,dy=o.y-py,f=dx*ca+dy*sa;
-  if(f>.2&&f<32&&M.abs((dy*ca-dx*sa)/f-M.tan(ang))<tol&&los(px,py,ez,o.x,o.y,o.z+(o.k==4?0:.45)))
-   hurt(o,dmg);
- }
-};
-const shoot=()=>{
- const w=stat(wp);sfx(wp==3?140:wp==1?90:220,.07,'sawtooth',.05);vib(12);
- if(w.k){spawn(6,px,py,ez-.15,ca*.32,sa*.32,.02,34);shake=4;return}
- const sp=(1+(w.rmp?ramp/9:0))*w.s;
- for(let j=w.p;j--;)hitScan((R()-R())*sp,w.d,w.p>1?.05:.035,w);
- if(w.rmp)ramp=M.min(ramp+2.5,18);
-};
-const setWeapon=n=>{n=M.max(0,M.min(3,n|0));if(n!=wp){wp=n;wt=-1;wsw=8;ramp=0}};
-window.setWeapon=setWeapon;
-window.getGameState=()=>({wp:wp,ammo:ammo,hp:hp,score:score,combo:combo,wave:wave,name:BASEW[wp].n,mode:mode,paused:paused,daily:daily});
+window.continueGame=()=>window.loadGame();
+window.setWeapon=n=>{selected=M.max(0,M.min(3,n|0));sfx(500,.04,'square',.03)};
+window.getGameState=()=>({wp:selected,ammo:coins,hp:lives,score:score,combo:combo,wave:wave,name:TW[selected].n,mode:mode,paused:paused,daily:daily});
 window.getMeta=()=>meta;
 window.setSensitivity=v=>{sens=M.max(.4,M.min(2,v))};
-window.setPaused=v=>{if(mode!=='playing')return;paused=!!v;fire=0;tf=0};
-const think=(o,a,d,f,j,q)=>{
- for(o of T){
-  o.t++;d=M.hypot(px-o.x,py-o.y);
-  if(o.k==2){
-   o.x+=o.vx;o.y+=o.vy;o.z+=o.vz;a=o.z+.45;
-   d<.35&&a>pz&&a<pz+.9?(ouch(2+2*(R()*6|0)),1):a<F[f=cell(o.x,o.y)]||a>C[f];
-   (d<.35||a<F[f]||a>C[f])&&(o.k=5,o.t=6);
-  }else if(o.k==6){
-   let best=null,bd=9;
-   for(q of T)if(q.k==4){const dd=M.hypot(q.x-o.x,q.y-o.y);if(dd<bd){bd=dd;best=q}}
-   if(best){a=M.atan2(best.y-o.y,best.x-o.x);o.vx+=M.cos(a)*.01;o.vy+=M.sin(a)*.01;o.vz+=(best.z-o.z)*.008}
-   o.x+=o.vx;o.y+=o.vy;o.z+=o.vz;
-   const rad=stat(3).splash||1;
-   for(q of T)if((q.k<2||q.k==4||q.k>8)&&M.hypot(q.x-o.x,q.y-o.y)<rad&&M.abs(q.z-o.z)<1.6){hurt(q,stat(3).d);q.k=5}
-   (o.t>100||o.z<F[f=cell(o.x,o.y)]||o.z>C[f])&&(o.k=7,o.t=0,o.vx=o.vy=o.vz=0);
-  }else if(o.k==7){o.t>9&&(o.k=5)}
-  else if(o.k==3){d<.5&&(ammo+=12,o.k=5,score+=25,sfx(1000,.1,'sine',.04))}
-  else if(o.k==8){d<.5&&(hp=M.min(100,hp+30),o.k=5,score+=50,sfx(800,.12,'sine',.04))}
-  else if(o.k==10){
-   d<.5&&(wLvl[wp]=Math.min(5,(wLvl[wp]||0)+1),o.k=5,score+=100,
-    sfx(1200,.18,'sine',.05),window.__saveMsg&&window.__saveMsg(BASEW[wp].n+' UPGRADED'));
-  }else if(o.k==4){
-   o.z=F[f=cell(o.x,o.y)]+1.1+M.sin(o.t/7)*.28;
-   if(hp&&mode==='playing'&&!paused&&los(o.x,o.y,o.z,px,py,ez)){
-    a=M.atan2(py-o.y,px-o.x);d>.8&&(o.x+=M.cos(a)*.028,o.y+=M.sin(a)*.028);
-    o.t%150==0&&spawn(2,o.x,o.y,o.z,(px-o.x)/d*.11,(py-o.y)/d*.11,(ez-o.z)/d*.11);
-   }
-  }else{
-   const boss=o.k==9,sw=o.k==11,br=o.k==12,sn=o.k==13;
-   const spd=sw?.075:boss?.02:br?.025:sn?.03:.042;
-   const wait=sw?18:sn?70:boss?26:br?60:40;
-   const chance=sw?.06:sn?.03:boss?.05:br?.015:.01;
-   !o.k&&o.s<4&&(o.s==2?(o.t==16&&spawn(2,o.x,o.y,o.z+.05,(px-o.x)/d*.156,(py-o.y)/d*.156,(ez-.8-o.z)/d*.156),o.t>22&&(o.s=1)):
-    hp&&mode==='playing'&&!paused&&los(o.x,o.y,o.z+.7,px,py,ez)&&(o.s?o.t>wait&&R()<chance&&(o.s=2,o.t=0):o.s=1),
-    o.s==1&&d>.7&&(a=M.atan2(py-o.y,px-o.x)+o.vx,f=M.cos(a)*spd,a=M.sin(a)*spd,
-     probe(o.x+f,o.y+a,o.z,.3)<99?(o.x+=f,o.y+=a,o.z=probe(o.x,o.y,o.z,.3)):o.vx=R()*4-2));
-   o.s==4&&o.t>110&&(o.k=5);
-  }
- }
- T=T.filter(o=>o.k!=5);
-};
-wt=-1;
-const weaponTic=()=>{
- wsw>0&&wsw--;ramp>0&&(ramp=M.max(0,ramp-.12));
- if(wt<0){if(fire&&hp&&ammo>=BASEW[wp].c&&wsw==0){wt=0}}
- else{wt++;wt==3&&(ammo-=BASEW[wp].c,shoot());wt>=stat(wp).t&&(wt=-1)}
- xl=wt>2&&wt<10?2:0;
-};
-const GUN='000000000122000000000122000000000122000000000122000000000122000000000122000000000122000000001122000004333122000043333122000444444122000433333122000433333122000444444122000433333122000043333122000004444122000000111122000001222222000012111111000121111111001211111111';
-const GPAL=[[40,40,46],[112,112,124],[156,86,40],[96,52,24]];
-const drawGun=(gx,gy)=>{
- gx=124+bob*64*M.cos(tic*3.1416/32);
- gy=104+bob*64*M.abs(M.sin(tic*3.1416/32))+(wt>2)*M.sin((wt-2)/42*3.1416)*28;
- xl&&blit(gx+12,gy-36,3,16,20,(u,v)=>spr({k:2},u,v),0,1);
- const pal=wp==2?[[40,40,46],[150,150,160],[180,180,190],[90,90,100]]:wp==3?[[40,46,40],[110,140,100],[160,200,80],[80,110,60]]:GPAL;
- blit(gx,gy,3,24,22,(u,v)=>bm(GUN,12,pal,u,v),0,1);
-};
-const tx=(s,x,y,f,c)=>{cx.font='bold '+f+'px sans-serif';cx.fillStyle=c;cx.fillText(s,x,y)};
-const box=(x,y,w,h,c)=>{cx.fillStyle=c;cx.fillRect(x,y,w,h)};
-const FACE='001111101111111112222122222212111221231322122222212222220122222012211100122220001111';
-const drawBar=(i,f)=>{
- for(i=53760;i<64000;i++)P(i,[108,108,112],1);
- f=hp/100;
- blit(146,172,2,14,12,(u,v)=>bm(FACE,7,[[40,24,16],[240-30*f,60+100*f,50+70*f],hp?[220,220,220]:[40,24,16]],u,v),0,1);
-};
-const drawMinimap=()=>{
- const s=1.15,ox=3,oy=3;
- box(ox-1,oy-1,40*s+2,26*s+2,'rgba(0,0,0,.45)');
- for(let k=0;k<1040;k++)if(OPEN[k])box(ox+(k%40)*s,oy+(k/40|0)*s,s,s,FL[k]&4?'rgba(0,255,0,.7)':'rgba(120,170,200,.5)');
- for(o of T)if(o.k<2||o.k==4||o.k>8)box(ox+o.x*s,oy+o.y*s,2,2,o.k==9?'#f00':'#ff5');
- box(ox+px*s-1,oy+py*s-1,3,3,'#fff');
-};
-const drawHud=()=>{
- tx('AMMO '+ammo,2,193,13,'#d21');tx(hp+'%',82,193,13,'#d21');
- tx('SC '+score,180,193,12,'#d21');tx('W'+wave+' x'+combo,250,193,12,'#9f9');
- daily&&tx('DAILY',130,193,11,'#5cf');
- for(f of fx){f.t--;tx(f.txt,f.x,f.y,14,f.c)}
- fx=fx.filter(f=>f.t>0);
- hitT>0&&(hitT--,box(156,80,2,8,'#fff'),box(152,84,8,2,'#fff'));
-};
-const saveMeta=()=>{try{window.Android&&Android.setMeta&&Android.setMeta(JSON.stringify(meta))}catch(e){}};
+window.setPaused=v=>{if(mode!=='playing')return;paused=!!v};
 const record=()=>{
  meta.bestScore=M.max(meta.bestScore,score);meta.bestWave=M.max(meta.bestWave,wave);
  meta.scores.push({s:score,w:wave,d:new Date().toISOString().slice(0,10)});
  meta.scores.sort((a,b)=>b.s-a.s);meta.scores=meta.scores.slice(0,5);
- if(wave>=5)achieve('wave5','WAVE 5');
+ if(wave>=5)ach('wave5','WAVE 5');
  if(daily)meta.daily=new Date().toISOString().slice(0,10);
  saveMeta();
 };
-gs=1;tt=0;
-const tap=()=>{(gs>2||vh<.11)&&mode==='playing'&&location.reload()};
-const randomOpen=()=>{
- let k,tries=0;do{k=cell(1+(R()*37|0),1+(R()*24|0))}while((!OPEN[k]||FL[k]&4)&&tries++<80);return k;
-};
-const spawnWave=()=>{
- wave++;
- expandMap(wave-2);
- let n=3+wave,j,k;
- for(j=0;j<n;j++){
-  k=randomOpen();const roll=R();let kind=0,h=80;
-  if(roll<.12)kind=11;else if(roll<.22)kind=12;else if(roll<.30)kind=13;else if(roll<.42)kind=4;
-  if(kind==11)h=40;if(kind==12)h=220;if(kind==13)h=70;if(kind==4)h=60;
-  spawn(kind,k%40,(k/40|0),F[k]+(kind==4?1.1:0),0,0,0,h);
+// ---------- input ----------
+cv.addEventListener('pointerdown',e=>{
+ if(mode!=='playing'||paused)return;
+ const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;
+ e.preventDefault();e.stopPropagation();
+ if(y>=BY){ // bottom cards
+  const n=Math.floor(x/(W/5));
+  if(n<4){selected=n;sfx(600,.05,'square',.04)}
+  else startWave();
+  return;
  }
- if(wave%5==0){k=randomOpen();spawn(9,k%40,(k/40|0),F[k],0,0,0,600);window.__saveMsg&&window.__saveMsg('BOSS WAVE')}
- if(wave%2==0){k=randomOpen();spawn(8,k%40,(k/40|0),F[k]+.1)}
- if(wave%3==0){k=randomOpen();spawn(10,k%40,(k/40|0),F[k]+.1)}
- sfx(300,.25,'sawtooth',.04);
+ if(!within(x,y))return;
+ const existing=towers.find(o=>M.hypot(o.x-x,o.y-y)<7);
+ if(existing){
+  const cost=15+existing.lv*15;
+  if(coins>=cost&&existing.lv<5){coins-=cost;existing.lv++;sfx(900,.12,'sine',.05);window.__saveMsg&&window.__saveMsg(TW[existing.type].n+' LV '+existing.lv);vib(20)}
+  return;
+ }
+ if(onPath(x,y)||nearTree(x,y)||nearTower(x,y))return;
+ const tw=TW[selected];
+ if(coins<tw.cost){window.__saveMsg&&window.__saveMsg('NEED '+tw.cost);return}
+ coins-=tw.cost;towers.push({x:x,y:y,type:selected,lv:wLvl[selected]||0,cd:0});
+ sfx(400,.08,'square',.04);vib(10);
+},{passive:false});
+onkeydown=e=>{
+ if(e.keyCode>=49&&e.keyCode<=52)window.setWeapon(e.keyCode-49);
+ if(e.keyCode==32)startWave();
+ if(e.keyCode==80||e.keyCode==27)window.setPaused(!paused);
 };
-const worldTic=()=>{
- FL[cell(px,py)]&4&&(gs=3,tt=tic/35|0,record(),mode='won');
- red&&red--;shake>0&&shake--;
- comboT>0?comboT--:(combo=1);
- hp<=0&&gs==1&&(gs=3,mode='dead',record(),sfx(70,.5,'sawtooth',.07),vib(200));
- gs==1&&tic-lastWave>90&&!T.some(o=>o.k<2||o.k==4||o.k>8)&&(spawnWave(),lastWave=tic);
+// ---------- waves ----------
+const startWave=()=>{
+ if(waveActive||mode!=='playing')return;
+ waveActive=true;
+ const n=4+wave*2;
+ for(let i=0;i<n;i++){
+  let kind=0;const q=R();
+  if(wave>=3&&q<.15)kind=1;else if(wave>=2&&q<.30)kind=2;
+  else if(wave>=4&&q<.42)kind=3;else if(wave>=5&&q<.52)kind=4;
+  if(wave%5==0&&i==n-1)kind=5;
+  const e=ET[kind],mul=1+wave*.16;
+  enemies.push({kind:kind,x:MX+path[0][0],y:MY+path[0][1],u:0,hp:e.hp*mul,max:e.hp*mul,sp:e.sp,slowT:0,t:0});
+ }
+ window.__saveMsg&&window.__saveMsg('WAVE '+wave+(wave%5==0?' - BOSS':''));
+ sfx(260,.2,'sawtooth',.04);
 };
-const overlay=()=>{
- box(0,0,320,168,`rgba(255,0,0,${hp?red/100:.5})`);
- gs>2&&(box(0,0,320,168,'#000c'),tx('KILLS '+kills,60,52,32,'#d21'),tx('SCORE '+score,60,84,32,'#fd0'),
-  tx('WAVE '+wave,80,116,32,'#9f9'),tx('TIME '+tt+'S',95,148,24,'#d21'));
- for(o of T)if(o.k==9&&o.s<4){box(80,8,160,7,'#000');box(81,9,158*(o.h/600),5,'#f33')}
+const finishWave=()=>{
+ waveActive=false;wave++;
+ const bonus=18+wave*6;coins+=bonus;score+=bonus;
+ if(wave%3==0&&reveal<3){reveal++;window.__saveMsg&&window.__saveMsg('MORE MAP REVEALED');ach('explore','MAP EXPANDED')}
+ window.__saveMsg&&window.__saveMsg('WAVE CLEAR +'+bonus);
+ sfx(800,.18,'sine',.05);
 };
-// run lifecycle
-const resetRun=()=>{
- [F,C,LT,WT,FT,FL].forEach((a,j)=>a.set(BASE[j]));OPEN.set(BASEOPEN);
- px=3;py=12;pa=pz=vx=vy=sa=0;ca=1;hp=100;ammo=24+(meta.bestWave>=5?12:0);kills=0;xl=0;
- wp=0;wsw=0;ramp=0;score=0;combo=1;comboT=0;wave=1;lastWave=0;shake=0;gs=1;tic=0;vh=ez=.64;red=0;wt=-1;
- wLvl=[0,0,0,0];if(meta.bestWave>=10)wLvl[3]=1;
- daily=false;seed=0;paused=false;mode='playing';fx=[];hitT=0;
- T=[];for(i=137;i<167;i+=3)MS[i]==1||spawn(MS[i],MS[i+1]/2,MS[i+2]/2,F[cell(MS[i+1]/2,MS[i+2]/2)]);
- spawn(4,12,6,F[cell(12,6)]+1.1,0,0,0,60);
- window.__saveMsg&&window.__saveMsg('WAVE 1');
+const addScore=(n)=>{
+ score+=n;combo=M.min(combo+1,9);comboT=120;
+ if(combo>=5)ach('combo5','x5 COMBO');
+ if(fx.length<10)fx.push({x:MX+R()*MW,y:MY+R()*80,t:25,txt:'+'+n});
 };
-window.startGame=()=>{resetRun()};
-window.startDaily=()=>{
- const d=new Date().toISOString().slice(0,10);
- if(meta.daily===d){window.__saveMsg&&window.__saveMsg('DAILY DONE TODAY');return}
- resetRun();daily=true;
- seed=[...d].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)>>>0;
- window.__saveMsg&&window.__saveMsg('DAILY CHALLENGE');
+const hurt=(e,n,slow)=>{
+ e.hp-=n;hitT=5;
+ if(slow)e.slowT=45;
+ if(fx.length<12)fx.push({x:e.x,y:e.y-4,t:18,txt:'-'+Math.round(n)});
+ if(e.hp<=0&&!e.dead){
+  e.dead=1;kills++;const rw=ET[e.kind].rw;coins+=rw;addScore(10*combo+rw);
+  sfx(700+combo*30,.09,'square',.04);vib(18);
+  for(let i=0;i<4;i++)particles.push({x:e.x,y:e.y,vx:(R()-.5)*1.6,vy:(R()-.5)*1.6,t:14,col:ET[e.kind].col});
+ }
 };
-window.continueGame=()=>window.loadGame();
-// save / load
-const stateKeys='px py pa pz vx vy sa ca hp ammo kills xl mvx mvy tic vh ez bob wp wsw ramp score combo comboT wave lastWave gs tt red wt daily seed'.split(' ');
-const saveState=()=>{
- const s={};for(const k of stateKeys)s[k]=eval(k);
- s.wLvl=wLvl.slice();
- s.T=T.map(o=>({k:o.k,x:o.x,y:o.y,z:o.z,vx:o.vx,vy:o.vy,vz:o.vz,h:o.h,s:o.s,t:o.t}));
- return s;
+// ---------- simulation ----------
+const step=()=>{
+ tic++;
+ if(comboT>0)comboT--;else combo=1;
+ fx.forEach(f=>f.t--);fx=fx.filter(f=>f.t>0);
+ particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.t--});particles=particles.filter(p=>p.t>0);
+ if(shake>0)shake--;
+ // enemies
+ for(const e of enemies){
+  if(e.dead)continue;
+  e.t++;
+  const e0=ET[e.kind],sp=e0.sp*(e.slowT>0?.45:1)*(e.kind==5?1:1);
+  if(e.slowT>0)e.slowT--;
+  e.u+=sp/pathLen;
+  if(e.u>=1){
+   e.dead=1;lives-=e.kind==5?5:1;redFlash=12;sfx(90,.2,'sawtooth',.06);vib(60);
+   if(lives<=0){lives=0;mode='dead';record();sfx(60,.5,'sawtooth',.08)}
+   continue;
+  }
+  const p=pathAt(e.u);e.x=MX+p[0];e.y=MY+p[1];
+ }
+ enemies=enemies.filter(e=>!e.dead);
+ // towers
+ for(const w of towers){
+  if(w.cd>0)w.cd--;
+  const tw=TW[w.type],rng=tw.rng*(1+.12*w.lv),dmg=tw.dmg*(1+.3*w.lv);
+  if(w.cd>0)continue;
+  let best=null,bd=rng;
+  for(const e of enemies){
+   if(!tw.air&&ET[e.kind].air)continue;
+   const d=M.hypot(e.x-w.x,e.y-w.y);
+   if(d<bd){bd=d;best=e}
+  }
+  if(best){
+   w.cd=tw.rate*(1-.08*w.lv);
+   shots.push({x:w.x,y:w.y,tx:best.x,ty:best.y,target:best,dmg:dmg,splash:tw.splash,slow:tw.slow,col:tw.col,t:30,lv:w.lv});
+   sfx(w.type==3?180:w.type==2?900:300,.05,'square',.025);
+  }
+ }
+ // projectiles
+ for(const s of shots){
+  s.t--;
+  let tx=s.tx,ty=s.ty;
+  if(s.target&&!s.target.dead){tx=s.target.x;ty=s.target.y}
+  const a=M.atan2(ty-s.y,tx-s.x),sp=2.6;
+  s.x+=M.cos(a)*sp;s.y+=M.sin(a)*sp;
+  if(M.hypot(tx-s.x,ty-s.y)<4||s.t<=0){
+   s.done=1;
+   if(s.splash){for(const e of enemies)if(!e.dead&&M.hypot(e.x-s.x,e.y-s.y)<s.splash)hurt(e,s.dmg*(ET[e.kind].air?.8:1),s.slow)}
+   else if(s.target&&!s.target.dead)hurt(s.target,s.dmg,s.slow);
+   for(let i=0;i<3;i++)particles.push({x:s.x,y:s.y,vx:(R()-.5)*1.2,vy:(R()-.5)*1.2,t:8,col:s.col});
+  }
+ }
+ shots=shots.filter(s=>!s.done);
+ if(waveActive&&enemies.length==0&&!enemies.pending)finishWave();
 };
-window.saveGame=()=>{try{Android.saveGame(JSON.stringify(saveState()));window.__saveMsg&&window.__saveMsg('SAVED');sfx(900,.08,'sine',.04)}catch(e){window.__saveMsg&&window.__saveMsg('SAVE FAIL')}};
+let redFlash=0;
+// ---------- rendering ----------
+const drawTree=(x,y)=>{
+ const p=pathAt(0); // decorative pine tree
+ cx.fillStyle='#2a160c';cx.fillRect(x-4,y-6,8,11);
+ cx.fillStyle='#c85a10';cx.fillRect(x-3,y-6,6,3);
+ cx.fillStyle='#ff9a20';cx.fillRect(x-2,y-9,4,4);cx.fillRect(x-3,y-4,6,3);cx.fillRect(x-4,y-1,8,3);
+ cx.fillStyle='#7a3a08';cx.fillRect(x-1,y+4,2,2);
+};
+const drawTower=(w)=>{
+ const tw=TW[w.type];
+ cx.fillStyle='#241612';cx.fillRect(w.x-6,w.y-6,12,12);
+ cx.fillStyle='#8a827c';cx.fillRect(w.x-5,w.y-3,10,7);
+ cx.fillStyle='#5a5450';cx.fillRect(w.x-3,w.y,6,3);
+ cx.fillStyle=tw.col;cx.fillRect(w.x-4,w.y-7,8,5);
+ if(w.lv>0){cx.fillStyle='#ffe08a';cx.fillRect(w.x-2,w.y-11,Math.min(5,w.lv),1)}
+};
+const drawEnemy=(e)=>{
+ const E=ET[e.kind],s=E.sz;
+ cx.fillStyle='#160d0a';cx.fillRect(e.x-s-1,e.y-s-1,2*s+2,2*s+2);
+ cx.fillStyle=E.col;cx.fillRect(e.x-s,e.y-s,2*s,2*s);
+ if(E.air){cx.fillStyle='#fff';cx.fillRect(e.x-s-2,e.y-1,2,2);cx.fillRect(e.x+s,e.y-1,2,2)}
+ cx.fillStyle='#ffe08a';cx.fillRect(e.x-1,e.y-1,2,2);
+ if(e.kind==5){cx.fillStyle='#ffe08a';cx.fillRect(e.x-2,e.y-s-4,4,2)}
+};
+const draw=()=>{
+ cx.fillStyle=C.bg;cx.fillRect(0,0,W,H);
+ // grass
+ const top=MY+Math.max(0,(3-reveal)*26);
+ rect(MX,top,MW,MH-(top-MY),C.grass);
+ for(let i=0;i<150;i++){
+  const x=MX+(i*47%MW),y=top+(i*71%(MH-(top-MY)));
+  px(x,y,C.speck);
+ }
+ // path
+ cx.lineJoin='round';
+ for(let i=0;i<path.length-1;i++){
+  const a=path[i],b=path[i+1];
+  line(MX+a[0],MY+a[1],MX+b[0],MY+b[1],C.edge,14);
+  line(MX+a[0],MY+a[1],MX+b[0],MY+b[1],C.path,10);
+ }
+ // fog on unrevealed area
+ if(reveal<3){cx.fillStyle='rgba(20,12,10,.82)';cx.fillRect(MX,MY,MW,top-MY)}
+ // trees
+ trees.forEach(o=>{if(o.y>=top)drawTree(o.x,o.y)});
+ // base
+ const ep=pathAt(1);cx.fillStyle='#2a160d';cx.fillRect(MX+ep[0]-7,MY+ep[1]-7,14,14);
+ cx.fillStyle='#d03028';cx.fillRect(MX+ep[0]-5,MY+ep[1]-5,10,8);
+ cx.fillStyle='#8a827c';cx.fillRect(MX+ep[0]-6,MY+ep[1]+2,12,4);
+ // towers, enemies, shots, particles
+ towers.forEach(drawTower);
+ enemies.forEach(e=>{if(e.y>=top||!ET[e.kind].air)drawEnemy(e)});
+ shots.forEach(s=>{cx.fillStyle=s.col;cx.fillRect(s.x-2,s.y-2,4,4)});
+ particles.forEach(p=>{cx.fillStyle=p.col;cx.fillRect(p.x,p.y,2,2)});
+ // enemy health bars
+ enemies.forEach(e=>{if(e.hp<e.max){const w=Math.max(8,ET[e.kind].sz*3);cx.fillStyle='#200';cx.fillRect(e.x-w/2,e.y-ET[e.kind].sz-5,w,2);cx.fillStyle='#0f0';cx.fillRect(e.x-w/2,e.y-ET[e.kind].sz-5,w*(e.hp/e.max),2)}});
+ // damage numbers
+ fx.forEach(f=>{cx.fillStyle='#ffe08a';cx.font='bold 9px monospace';cx.fillText(f.txt,f.x,f.y-f.t*.6)});
+ // top HUD
+ rect(0,0,W,16,'#1a0f0d');
+ cx.fillStyle='#ff4a4a';cx.fillRect(4,5,4,6);cx.fillRect(5,4,2,8);
+ text(lives+'',11,13,14,'#ffe08a');
+ cx.fillStyle='#ff9a20';cx.fillRect(58,5,4,7);cx.fillRect(59,4,2,2);
+ text(coins+'',66,13,14,'#ffe08a');
+ cx.fillStyle='#ff9a20';cx.fillRect(112,4,3,9);cx.fillRect(115,7,5,2);
+ text(kills+'',124,13,14,'#ffe08a');
+ text('W'+wave,147,13,10,'#ffe08a');
+ // minimap (top-left of grass)
+ if(reveal>0){
+  const s=.28;
+  rect(MX+1,MY+1,42,6,'rgba(0,0,0,.55)');
+  for(let i=0;i<path.length-1;i++){const a=path[i],b=path[i+1];line(MX+1+a[0]*s,MY+1+a[1]*s,MX+1+b[0]*s,MY+1+b[1]*s,'#cdbf83',1)}
+  towers.forEach(o=>{cx.fillStyle=TW[o.type].col;cx.fillRect(MX+1+o.x*s,MY+1+o.y*s,2,2)});
+ }
+ // bottom card bar
+ rect(0,BY,W,H-BY,'#1a0f0d');
+ const cw=W/5;
+ for(let i=0;i<5;i++){
+  const x=i*cw+1,y=BY+2,w=cw-2,h=H-BY-4;
+  rect(x,y,w,h,i==selected?C.cardOn:C.card);
+  if(i<4){
+   const tw=TW[i];
+   cx.fillStyle='#241612';cx.fillRect(x+w/2-7,y+8,14,14);
+   cx.fillStyle='#8a827c';cx.fillRect(x+w/2-6,y+14,12,7);
+   cx.fillStyle=tw.col;cx.fillRect(x+w/2-5,y+9,10,6);
+   text(tw.cost+'',x+w/2,y+h-5,13,'#ffe08a');
+  }else{
+   cx.fillStyle='#ff9a20';
+   cx.beginPath();cx.moveTo(x+w/2-2,y+h/2-6);cx.lineTo(x+w/2+5,y+h/2);cx.lineTo(x+w/2-2,y+h/2+6);cx.closePath();cx.fill();
+  }
+ }
+ if(redFlash>0){redFlash--;cx.fillStyle='rgba(255,0,0,'+(redFlash/30*.5)+')';cx.fillRect(MX,MY,MW,MH)}
+ if(hitT>0){hitT--;cx.fillStyle='#fff';cx.fillRect(79,100,2,8);cx.fillRect(76,103,8,2)}
+ if(mode==='dead'||mode==='won'){
+  cx.fillStyle='rgba(0,0,0,.8)';cx.fillRect(0,20,W,120);
+  text(mode==='won'?'ESCAPED!':'GAME OVER',24,70,18,'#ff5a3a');
+  text('WAVE '+wave+'  SCORE '+score,26,95,12,'#ffe08a');
+ }
+};
+// ---------- save / load ----------
+const keys='wave lives coins score kills combo comboT reveal selected waveActive tic daily seed redFlash'.split(' ');
+window.saveGame=()=>{
+ try{
+  const s={};for(const k of keys)s[k]=eval(k);
+  s.wLvl=wLvl.slice();s.towers=towers.map(o=>({x:o.x,y:o.y,type:o.type,lv:o.lv}));
+  Android.saveGame(JSON.stringify(s));window.__saveMsg&&window.__saveMsg('SAVED');sfx(900,.08,'sine',.04)
+ }catch(e){window.__saveMsg&&window.__saveMsg('SAVE FAIL')}
+};
 window.loadGame=()=>{
  try{
   const raw=Android.loadGame();if(!raw){window.__saveMsg&&window.__saveMsg('NO SAVE');return false}
-  const d=JSON.parse(raw);
-  for(const k of stateKeys)if(d[k]!==undefined)eval(k+'=d[k]');
+  const d=JSON.parse(raw);for(const k of keys)if(d[k]!==undefined)eval(k+'=d[k]');
   wLvl=(d.wLvl||[0,0,0,0]).slice();
-  T=(d.T||[]).map(o=>({k:o.k,x:o.x,y:o.y,z:o.z,vx:o.vx||0,vy:o.vy||0,vz:o.vz||0,h:o.h||80,s:o.s||0,t:o.t||0,d:0}));
-  [F,C,LT,WT,FT,FL].forEach((a,j)=>a.set(BASE[j]));OPEN.set(BASEOPEN);
-  for(let n=0;n<=wave-2;n++)expandMap(n);
-  paused=false;mode='playing';gs=1;wt=-1;fx=[];hitT=0;
+  towers=(d.towers||[]).map(o=>({x:o.x,y:o.y,type:o.type,lv:o.lv||0,cd:0}));
+  enemies=[];shots=[];particles=[];fx=[];mode='playing';paused=false;waveActive=false;
   window.__saveMsg&&window.__saveMsg('LOADED');return true;
  }catch(e){window.__saveMsg&&window.__saveMsg('LOAD FAIL');return false}
 };
-// main loop: one tick at 35 Hz (the app wrapper may run logic 3x)
-tic=0;vh=ez=.64;
-const tick=()=>{
- if(gs==1&&mode==='playing'&&!paused){
-  tic++;movePlayer();weaponTic();think();worldTic();
- }
- bob=M.min(.25,16*(vx*vx+vy*vy));
- ez=pz+vh+bob/2*M.sin(tic*3.1416/10);
- render(),drawThings(),hp&&drawGun(),drawBar(),cx.putImageData(img,0,0),overlay(),drawHud(),drawMinimap();
-};
-setInterval(tick,1e3/35);
+// ---------- main loop ----------
+redFlash=0;mode='title';paused=false;wave=1;lives=20;coins=75;score=0;kills=0;combo=1;comboT=0;
+reveal=3;selected=0;waveActive=false;towers=[];enemies=[];shots=[];particles=[];fx=[];tic=0;shake=0;hitT=0;
+daily=false;seed=0;sens=1;wLvl=[0,0,0,0];makeTrees();
+const tick=()=>{if(mode==='playing'&&!paused)step();draw()};
+setInterval(tick,1000/35);
