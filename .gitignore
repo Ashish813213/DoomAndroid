@@ -1,0 +1,4 @@
+# Android build intermediates
+sdk/
+DoomQR-Android/build/
+*.idsig
